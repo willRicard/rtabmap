@@ -27,6 +27,7 @@ SET(SRC_FILES
     camera/CameraOpenni.cpp
     camera/CameraOpenNI2.cpp
     camera/CameraOpenNICV.cpp
+    camera/CameraOrbbec.cpp
     camera/CameraRealSense.cpp
     camera/CameraRealSense2.cpp
     camera/CameraRGBDImages.cpp
@@ -41,6 +42,7 @@ SET(SRC_FILES
     camera/CameraMyntEye.cpp
     camera/CameraDepthAI.cpp
 	camera/CameraSeerSense.cpp
+    camera/uvc_camera_driver.cpp
     
     EpipolarGeometry.cpp
     VisualWord.cpp
