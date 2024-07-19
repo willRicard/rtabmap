@@ -86,26 +86,26 @@ CameraOrbbec::~CameraOrbbec()
 
 bool CameraOrbbec::setAutoWhiteBalance(bool enabled)
 {
-#ifdef RTABMAP_OPENNI2
-	if(_color && _color->getCameraSettings())
-	{
-		return _color->getCameraSettings()->setAutoWhiteBalanceEnabled(enabled) == openni::STATUS_OK;
-	}
+#ifdef RTABMAP_LIBUVC
+    if (_color_driver)
+    {
+        return _color_driver->setUVCAutoWhiteBalance(enabled);
+    }
 #else
-	UERROR("CameraOrbbec: RTAB-Map is not built with OpenNI2 support!");
+	UERROR("CameraOrbbec: RTAB-Map is not built with libuvc support!");
 #endif
 	return false;
 }
 
 bool CameraOrbbec::setAutoExposure(bool enabled)
 {
-#ifdef RTABMAP_OPENNI2
-	if(_color && _color->getCameraSettings())
+#ifdef RTABMAP_LIBUVC
+	if(_color_driver)
 	{
-		return _color->getCameraSettings()->setAutoExposureEnabled(enabled) == openni::STATUS_OK;
+    	return _color_driver->setUVCAutoExposure(enabled);
 	}
 #else
-	UERROR("CameraOrbbec: RTAB-Map is not built with OpenNI2 support!");
+	UERROR("CameraOrbbec: RTAB-Map is not built with libuvc support!");
 #endif
 	return false;
 }

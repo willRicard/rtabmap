@@ -891,10 +891,9 @@ bool UVCCameraDriver::setUVCWhiteBalanceCb(SetInt32Request &request, SetInt32Res
   return true;
 }
 
-bool UVCCameraDriver::setUVCAutoExposureCb(std_srvs::SetBoolRequest &request,
-                                           std_srvs::SetBoolResponse &response) {
-  (void)response;
-  if (request.data) {
+#endif
+bool UVCCameraDriver::setUVCAutoExposure(bool enable) {
+  if (enable) {
     uvc_set_ae_mode(device_handle_, 8);
   } else {
     uvc_set_ae_mode(device_handle_, 1);
@@ -902,16 +901,15 @@ bool UVCCameraDriver::setUVCAutoExposureCb(std_srvs::SetBoolRequest &request,
   return true;
 }
 
-bool UVCCameraDriver::setUVCAutoWhiteBalanceCb(std_srvs::SetBoolRequest &request,
-                                               std_srvs::SetBoolResponse &response) {
-  if (request.data) {
+bool UVCCameraDriver::setUVCAutoWhiteBalance(bool enabled) {
+  if (enabled) {
     uvc_set_white_balance_temperature_auto(device_handle_, 1);
   } else {
     uvc_set_white_balance_temperature_auto(device_handle_, 0);
   }
-  response.success = true;
   return true;
 }
+#if 0
 
 bool UVCCameraDriver::getUVCMirrorCb(GetInt32Request &request, GetInt32Response &response) {
   (void)request;

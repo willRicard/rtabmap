@@ -125,11 +125,11 @@ class UVCCameraDriver {
 
   bool setUVCWhiteBalanceCb(SetInt32Request& request, SetInt32Response& response);
 
-  bool setUVCAutoExposureCb(std_srvs::SetBoolRequest& request, std_srvs::SetBoolResponse& response);
+#endif
+  bool setUVCAutoExposure(bool enable);
 
-  bool setUVCAutoWhiteBalanceCb(std_srvs::SetBoolRequest& request,
-                                std_srvs::SetBoolResponse& response);
-
+  bool setUVCAutoWhiteBalance(bool enable);
+#if 0
   bool getUVCMirrorCb(GetInt32Request& request, GetInt32Response& response);
 
   bool setUVCMirrorCb(std_srvs::SetBoolRequest& request, std_srvs::SetBoolResponse& response);
@@ -152,7 +152,9 @@ class UVCCameraDriver {
   ImageROI roi_;
   uvc_context_t* ctx_ = nullptr;
   uvc_device_t* device_ = nullptr;
+#endif
   uvc_device_handle_t* device_handle_ = nullptr;
+#if 0
   uvc_frame_t* frame_buffer_ = nullptr;
   uvc_stream_ctrl_t ctrl_{};
   std::atomic_bool uvc_flip_{false};
