@@ -198,9 +198,9 @@ void UVCCameraDriver::openCamera() {
   UINFO("open uvc camera");
   uvc_error_t err;
   auto serial_number = config_.serial_number.empty() ? nullptr : config_.serial_number.c_str();
-  if(device_ == nullptr)
+  if(device_ != nullptr)
   {
-      UERROR("Check failed libuvc device is NULL");
+      UERROR("Check failed libuvc device is not NULL");
       return;
   }
   err = uvc_find_device(ctx_, &device_, config_.vendor_id, config_.product_id, serial_number);
@@ -230,8 +230,8 @@ void UVCCameraDriver::openCamera() {
     device_ = nullptr;
     throw std::runtime_error(ss.str());
   }
-  if(device_handle_ == nullptr) {
-      UERROR("Check failed libuvc device handle is NULL");
+  if(device_handle_ != nullptr) {
+      UERROR("Check failed libuvc device handle is not NULL");
       return;
   }
   err = uvc_open(device_, &device_handle_);
@@ -269,7 +269,7 @@ void UVCCameraDriver::setVideoMode() {
       UERROR("Check failed libuvc device is NULL");
       return;
   }
-  if (device_handle_ == NULL) {
+  if (device_handle_ == nullptr) {
       UERROR("Check failed libuvc device handle is NULL");
       return;
   }
@@ -303,7 +303,7 @@ void UVCCameraDriver::startStreaming() {
       UERROR("Check failed libuvc device is NULL");
       return;
   }
-  if (device_handle_) {
+  if (device_handle_ == nullptr) {
       UERROR("Check failed libuvc device handle is NULL");
       return;
   }
