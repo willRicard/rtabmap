@@ -61,13 +61,6 @@ struct UVCCameraConfig {
     UVCCameraConfig& operator=(UVCCameraConfig&&) = default;
 };
 
-struct ImageROI {
-    int x = -1;
-    int y = -1;
-    int width = -1;
-    int height = -1;
-};
-
 std::ostream& operator<<(std::ostream& os, const UVCCameraConfig& config);
 
 class UVCCameraDriver {
@@ -92,7 +85,8 @@ class UVCCameraDriver {
   void startStreaming();
 
   void stopStreaming() noexcept;
-#if 0
+
+  void *getData() { return frame_data_; }
 
   int getResolutionX() const;
 
@@ -104,7 +98,6 @@ class UVCCameraDriver {
   bool MPPDecodeFrame(uvc_frame_t* frame, uint8_t* rgb_data);
 #endif
 
- private:
   static enum uvc_frame_format UVCFrameFormatString(const std::string& format);
 
   static void frameCallbackWrapper(uvc_frame_t* frame, void* ptr);
@@ -118,7 +111,6 @@ class UVCCameraDriver {
                                           int selector, enum uvc_status_attribute status_attribute,
                                           void* data, size_t data_len, void* ptr);
 
-#endif
   void openCamera();
 
   int getUVCExposure();
@@ -155,11 +147,11 @@ class UVCCameraDriver {
 #endif
   UVCCameraConfig config_;
   std::string camera_name_ = "camera";
-  ImageROI roi_;
   uvc_context_t* ctx_ = nullptr;
   uvc_device_t* device_ = nullptr;
   uvc_device_handle_t* device_handle_ = nullptr;
   uvc_frame_t* frame_buffer_ = nullptr;
+  void *frame_data_ = nullptr;
   uvc_stream_ctrl_t ctrl_{};
   std::atomic_bool uvc_flip_{false};
   std::atomic_bool is_streaming_started{false};

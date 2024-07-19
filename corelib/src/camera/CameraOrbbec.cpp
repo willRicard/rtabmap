@@ -426,27 +426,23 @@ SensorData CameraOrbbec::captureImage(SensorCaptureInfo * info)
 	int readyStream = -1;
 	if(_device->isValid() &&
 		_depth->isValid() &&
-		_color->isValid() &&
-		_device->getSensorInfo(openni::SENSOR_DEPTH) != NULL &&
-		_device->getSensorInfo(_type==kTypeColorDepth?openni::SENSOR_COLOR:openni::SENSOR_IR) != NULL)
+		_color_driver != nullptr &&
+		_device->getSensorInfo(openni::SENSOR_DEPTH) != NULL)
 	{
 		openni::VideoStream* depthStream[] = {_depth};
-		openni::VideoStream* colorStream[] = {_color};
-		if((_type != kTypeIR && openni::OpenNI::waitForAnyStream(depthStream, 1, &readyStream, 5000) != openni::STATUS_OK) ||
-		   openni::OpenNI::waitForAnyStream(colorStream, 1, &readyStream, 5000) != openni::STATUS_OK)
+		if(_type != kTypeIR && openni::OpenNI::waitForAnyStream(depthStream, 1, &readyStream, 5000) != openni::STATUS_OK)
 		{
 			UWARN("No frames received since the last 5 seconds, end of stream is reached!");
 		}
 		else
 		{
-			openni::VideoFrameRef depthFrame, colorFrame;
+			openni::VideoFrameRef depthFrame;
 			if(_type != kTypeIR)
 			{
 				_depth->readFrame(&depthFrame);
 			}
-			_color->readFrame(&colorFrame);
 			cv::Mat depth, rgb;
-			if((_type == kTypeIR || depthFrame.isValid()) && colorFrame.isValid())
+			if(_type == kTypeIR || depthFrame.isValid())
 			{
 				int h,w;
 				if(_type != kTypeIR)
@@ -455,9 +451,9 @@ SensorData CameraOrbbec::captureImage(SensorCaptureInfo * info)
 					w=depthFrame.getWidth();
 					depth = cv::Mat(h, w, CV_16U, (void*)depthFrame.getData()).clone();
 				}
-				h=colorFrame.getHeight();
-				w=colorFrame.getWidth();
-				cv::Mat tmp(h, w, CV_8UC3, (void *)colorFrame.getData());
+				h=_color_driver->getResolutionY();
+				w=_color_driver->getResolutionX();
+				cv::Mat tmp(h, w, CV_8UC3, _color_driver->getData());
 				if(_type==kTypeColorDepth)
 				{
 					cv::cvtColor(tmp, rgb, CV_RGB2BGR);

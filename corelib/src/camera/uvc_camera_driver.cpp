@@ -36,8 +36,6 @@
 #include <rtabmap/core/camera/uvc_camera_driver.h>
 #include <rtabmap/utilite/ULogger.h>
 
-#include <cv_bridge/cv_bridge.h>
-
 #include <boost/optional.hpp>
 #include <opencv2/opencv.hpp>
 
@@ -142,10 +140,6 @@ UVCCameraDriver::UVCCameraDriver(const UVCCameraConfig &camera_info,
   flip_color_ = false;
   config_.vendor_id = 0x2bc5;
   config_.product_id = 0x050e;
-  roi_.x = -1;
-  roi_.y = -1;
-  roi_.width = -1;
-  roi_.height = -1;
   camera_name_ = "camera";
   enable_color_auto_exposure_ = true;
   gain_ = -1;
@@ -155,6 +149,9 @@ UVCCameraDriver::UVCCameraDriver(const UVCCameraConfig &camera_info,
       UERROR("Null pointer received from uvc_allocate_frame");
       throw std::runtime_error("allocate uvc frame failed");
   }
+
+  frame_data_ = (char*) malloc(3 * config_.width * config_.height);
+
   openCamera();
   setupCameraParams();
 #if defined(USE_RK_MPP)
@@ -164,6 +161,10 @@ UVCCameraDriver::UVCCameraDriver(const UVCCameraConfig &camera_info,
 
 UVCCameraDriver::~UVCCameraDriver() {
   stopStreaming();
+  if (frame_data_) {
+    free(frame_data_);
+    frame_data_ = nullptr;
+  }
   if (device_handle_) {
     UINFO("uvc close device");
     uvc_close(device_handle_);
@@ -349,7 +350,6 @@ void UVCCameraDriver::stopStreaming() noexcept {
   is_streaming_started.store(false);
 }
 
-#if 0
 int UVCCameraDriver::getResolutionX() const { return config_.width; }
 
 int UVCCameraDriver::getResolutionY() const { return config_.height; }
@@ -543,38 +543,35 @@ enum uvc_frame_format UVCCameraDriver::UVCFrameFormatString(const std::string &f
   } else if (format == "gray8") {
     return UVC_COLOR_FORMAT_GRAY8;
   } else {
-    ROS_WARN_STREAM("Invalid Video Mode: " << format);
-    ROS_WARN_STREAM("Continue using video mode: uncompressed");
+    UWARN("Invalid Video Mode: %s", format.c_str());
+    UWARN("Continue using video mode: uncompressed");
     return UVC_COLOR_FORMAT_UNCOMPRESSED;
   }
 }
 
 void UVCCameraDriver::frameCallbackWrapper(uvc_frame_t *frame, void *ptr) {
-  CHECK_NOTNULL(ptr);
+  if (ptr == nullptr) {
+      UERROR("Check failed libuvc user data is NULL");
+      return;
+  }
   auto driver = static_cast<UVCCameraDriver *>(ptr);
   driver->frameCallback(frame);
 }
 
 void UVCCameraDriver::frameCallback(uvc_frame_t *frame) {
-  CHECK_NOTNULL(frame);
-  CHECK_NOTNULL(frame_buffer_);
+  if (frame == NULL) {
+      UERROR("Check failed libuvc frame is NULL");
+      return;
+  }
+  if (frame_buffer_ == NULL) {
+      UERROR("Check failed libuvc frame buffer is NULL");
+      return;
+  }
   static constexpr int unit_step = 3;
-  sensor_msgs::Image image;
-  image.width = frame->width;
-  image.height = frame->height;
-  image.step = image.width * unit_step;
-  image.header.frame_id = frame_id_;
-  image.header.stamp = ros::Time::now();
-  image.data.resize(image.height * image.step);
-  if (frame->frame_format == UVC_FRAME_FORMAT_BGR) {
-    image.encoding = "bgr8";
-    memcpy(&(image.data[0]), frame->data, frame->data_bytes);
-  } else if (frame->frame_format == UVC_FRAME_FORMAT_RGB) {
-    image.encoding = "rgb8";
-    memcpy(&(image.data[0]), frame->data, frame->data_bytes);
-  } else if (frame->frame_format == UVC_FRAME_FORMAT_UYVY) {
-    image.encoding = "yuv422";
-    memcpy(&(image.data[0]), frame->data, frame->data_bytes);
+  if ((frame->frame_format == UVC_FRAME_FORMAT_BGR) ||
+      (frame->frame_format == UVC_FRAME_FORMAT_RGB) ||
+      (frame->frame_format == UVC_FRAME_FORMAT_UYVY)) {
+    memcpy(frame_data_, frame->data, frame->data_bytes);
   } else if (frame->frame_format == UVC_FRAME_FORMAT_YUYV) {
     // FIXME: uvc_any2bgr does not work on "yuyv" format, so use uvc_yuyv2bgr directly.
     uvc_error_t conv_ret = uvc_yuyv2bgr(frame, frame_buffer_);
@@ -582,20 +579,23 @@ void UVCCameraDriver::frameCallback(uvc_frame_t *frame) {
       uvc_perror(conv_ret, "Couldn't convert frame to RGB");
       return;
     }
-    image.encoding = "bgr8";
-    memcpy(&(image.data[0]), frame_buffer_->data, frame_buffer_->data_bytes);
+    memcpy(frame_data_, frame_buffer_->data, frame_buffer_->data_bytes);
   } else if (frame->frame_format == UVC_FRAME_FORMAT_MJPEG) {
     // Enable mjpeg support despite uvs_any2bgr shortcoming
     //  https://github.com/ros-drivers/libuvc_ros/commit/7508a09f
 #if defined(USE_RK_MPP)
     bool ret = MPPDecodeFrame(frame, rgb_data_);
     if (!ret) {
-      ROS_ERROR("MPPDecodeFrame failed");
+      UERROR("MPPDecodeFrame failed");
       return;
     }
     image.encoding = "bgr8";
-    CHECK_NOTNULL(mpp_frame_);
-    CHECK_NOTNULL(rgb_data_);
+    if (mpp_frame_ == nullptr) {
+        return;
+    }
+    if (rgb_data_ == nullptr) {
+        return;
+    }
     memcpy(&(image.data[0]), rgb_data_, frame->width * frame->height * 3);
 #else
 
@@ -604,8 +604,7 @@ void UVCCameraDriver::frameCallback(uvc_frame_t *frame) {
       uvc_perror(conv_ret, "Couldn't convert frame to RGB");
       return;
     }
-    image.encoding = "rgb8";
-    memcpy(&(image.data[0]), frame_buffer_->data, frame_buffer_->data_bytes);
+    memcpy(frame_data_, frame_buffer_->data, frame_buffer_->data_bytes);
 #endif
   } else {
     uvc_error_t conv_ret = uvc_any2bgr(frame, frame_buffer_);
@@ -613,47 +612,7 @@ void UVCCameraDriver::frameCallback(uvc_frame_t *frame) {
       uvc_perror(conv_ret, "Couldn't convert frame to RGB");
       return;
     }
-    image.encoding = "bgr8";
-    memcpy(&(image.data[0]), frame_buffer_->data, frame_buffer_->data_bytes);
-  }
-
-  if (roi_.x != -1 && roi_.y != -1 && roi_.width != -1 && roi_.height != -1) {
-    auto cv_image_ptr = cv_bridge::toCvCopy(image);
-    auto cv_img = cv_image_ptr->image;
-    cv::Rect roi(roi_.x, roi_.y, roi_.width, roi_.height);
-    cv::Mat dst(cv_image_ptr->image, roi);
-    cv_image_ptr->image = dst;
-    image = *(cv_image_ptr->toImageMsg());
-  }
-  if (uvc_flip_ || flip_color_) {
-    auto cv_image_ptr = cv_bridge::toCvCopy(image);
-    auto cv_img = cv_image_ptr->image;
-    cv::flip(cv_img, cv_img, 1);
-    cv_image_ptr->image = cv_img;
-    image = *(cv_image_ptr->toImageMsg());
-  }
-  auto camera_info = getCameraInfo();
-  camera_info.header.stamp = ros::Time::now();
-  camera_info_publisher_.publish(camera_info);
-  image.header.frame_id = config_.optical_frame_id;
-  image.header.stamp = camera_info.header.stamp;
-  image_publisher_.publish(image);
-  if (save_image_) {
-    auto now = std::time(nullptr);
-    std::stringstream ss;
-    ss << std::put_time(std::localtime(&now), "%Y%m%d_%H%M%S");
-    auto current_path = boost::filesystem::current_path().string();
-    std::string filename = current_path + "/image/uvc_color_" + std::to_string(image.width) + "x" +
-                           std::to_string(image.height) + "_" + ss.str() + ".png";
-    if (!boost::filesystem::exists(current_path + "/image")) {
-      boost::filesystem::create_directory(current_path + "/image");
-    }
-    ROS_INFO_STREAM("Saving image to " << filename);
-
-    auto image_to_save = cv_bridge::toCvCopy(image, sensor_msgs::image_encodings::BGR8)->image;
-    cv::imwrite(filename, image_to_save);
-
-    save_image_ = false;
+    memcpy(frame_data_, frame_buffer_->data, frame_buffer_->data_bytes);
   }
 }
 
@@ -661,22 +620,27 @@ void UVCCameraDriver::autoControlsCallback(enum uvc_status_class status_class, i
                                            int selector, enum uvc_status_attribute status_attribute,
                                            void *data, size_t data_len) {
   char buff[256];
-  CHECK(data_len < 256);
+  if (data_len < 256) {
+      UERROR("Check failed libuvc control data is less than 256 bytes");
+      return;
+  }
   (void)data;
   sprintf(buff, "Controls callback. class: %d, event: %d, selector: %d, attr: %d, data_len: %zu\n",
           status_class, event, selector, status_attribute, data_len);
-  ROS_INFO_STREAM(buff);
+  UINFO("%s", buff);
 }
 
 void UVCCameraDriver::autoControlsCallbackWrapper(enum uvc_status_class status_class, int event,
                                                   int selector,
                                                   enum uvc_status_attribute status_attribute,
                                                   void *data, size_t data_len, void *ptr) {
-  CHECK_NOTNULL(ptr);
+  if (ptr == nullptr) {
+    UERROR("Check failed libuvc control user data is NULL");
+    return;
+  }
   auto driver = static_cast<UVCCameraDriver *>(ptr);
   driver->autoControlsCallback(status_class, event, selector, status_attribute, data, data_len);
 }
-#endif
 
 int UVCCameraDriver::getUVCExposure() {
   uint32_t data;
@@ -839,14 +803,6 @@ bool UVCCameraDriver::toggleUVCCamera(std_srvs::SetBoolRequest &request,
   } else {
     stopStreaming();
   }
-  return true;
-}
-
-bool UVCCameraDriver::saveImageCallback(std_srvs::EmptyRequest &request,
-                                        std_srvs::EmptyResponse &response) {
-  (void)request;
-  (void)response;
-  save_image_ = true;
   return true;
 }
 
