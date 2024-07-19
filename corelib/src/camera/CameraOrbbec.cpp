@@ -112,48 +112,46 @@ bool CameraOrbbec::setAutoExposure(bool enabled)
 
 bool CameraOrbbec::setExposure(int value)
 {
-#ifdef RTABMAP_OPENNI2
-#if ONI_VERSION_MAJOR > 2 || (ONI_VERSION_MAJOR==2 && ONI_VERSION_MINOR >= 2)
-	if(_color && _color->getCameraSettings())
-	{
-		return _color->getCameraSettings()->setExposure(value) == openni::STATUS_OK;
-	}
+#ifdef RTABMAP_LIBUVC
+    if(_color_driver)
+    {
+        return _color_driver->setUVCExposure(value);
+    }
 #else
-	UERROR("CameraOrbbec: OpenNI >= 2.2 required to use this method.");
-#endif
-#else
-	UERROR("CameraOrbbec: RTAB-Map is not built with OpenNI2 support!");
+	UERROR("CameraOrbbec: RTAB-Map is not built with libuvc support!");
 #endif
 	return false;
 }
 
 bool CameraOrbbec::setGain(int value)
 {
-#ifdef RTABMAP_OPENNI2
-#if ONI_VERSION_MAJOR > 2 || (ONI_VERSION_MAJOR==2 && ONI_VERSION_MINOR >= 2)
-	if(_color && _color->getCameraSettings())
-	{
-		return _color->getCameraSettings()->setGain(value) == openni::STATUS_OK;
-	}
+#ifdef RTABMAP_LIBUVC
+    if(_color_driver)
+    {
+        return _color_driver->setUVCGain(value);
+    }
 #else
-	UERROR("CameraOrbbec: OpenNI >= 2.2 required to use this method.");
-#endif
-#else
-	UERROR("CameraOrbbec: RTAB-Map is not built with OpenNI2 support!");
+	UERROR("CameraOrbbec: RTAB-Map is not built with libuvc support!");
 #endif
 	return false;
 }
 
 bool CameraOrbbec::setMirroring(bool enabled)
 {
+    bool ok = false;
 #ifdef RTABMAP_OPENNI2
-	if(_color->isValid() && _depth->isValid())
+	if(_depth->isValid())
 	{
-		return _depth->setMirroringEnabled(enabled) == openni::STATUS_OK &&
-				_color->setMirroringEnabled(enabled) == openni::STATUS_OK;
+		ok &= _depth->setMirroringEnabled(enabled) == openni::STATUS_OK;
 	}
 #endif
-	return false;
+#ifdef RTABMAP_LIBUVC
+    if(_color_driver)
+    {
+        ok &= _color_driver->setUVCMirror(enabled);
+    }
+#endif
+	return ok;
 }
 
 void CameraOrbbec::setOpenNI2StampsAndIDsUsed(bool used)

@@ -35,6 +35,8 @@
 
 #pragma once
 
+#include <atomic>
+
 #include <libuvc/libuvc.h>
 #include <openni2/OpenNI.h>
 
@@ -115,11 +117,15 @@ class UVCCameraDriver {
 
   bool getUVCExposureCb(GetInt32Request& request, GetInt32Response& response);
 
-  bool setUVCExposureCb(SetInt32Request& request, SetInt32Response& response);
+#endif
+  bool setUVCExposure(int value);
+#if 0
 
   bool getUVCGainCb(GetInt32Request& request, GetInt32Response& response);
 
-  bool setUVCGainCb(SetInt32Request& request, SetInt32Response& response);
+#endif
+  bool setUVCGain(int value);
+#if 0
 
   bool getUVCWhiteBalanceCb(GetInt32Request& request, GetInt32Response& response);
 
@@ -132,7 +138,9 @@ class UVCCameraDriver {
 #if 0
   bool getUVCMirrorCb(GetInt32Request& request, GetInt32Response& response);
 
-  bool setUVCMirrorCb(std_srvs::SetBoolRequest& request, std_srvs::SetBoolResponse& response);
+#endif
+  bool setUVCMirror(bool enable);
+#if 0
 
   bool toggleUVCCamera(std_srvs::SetBoolRequest& request, std_srvs::SetBoolResponse& response);
 
@@ -157,7 +165,9 @@ class UVCCameraDriver {
 #if 0
   uvc_frame_t* frame_buffer_ = nullptr;
   uvc_stream_ctrl_t ctrl_{};
+#endif
   std::atomic_bool uvc_flip_{false};
+#if 0
   std::atomic_bool is_streaming_started{false};
   std::atomic_bool save_image_{false};
   std::atomic_bool is_camera_opened_{false};

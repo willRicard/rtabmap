@@ -34,6 +34,7 @@
  *********************************************************************/
 
 #include <rtabmap/core/camera/uvc_camera_driver.h>
+#include <rtabmap/utilite/ULogger.h>
 
 #include <cv_bridge/cv_bridge.h>
 
@@ -779,38 +780,36 @@ bool UVCCameraDriver::getUVCExposureCb(GetInt32Request &request, GetInt32Respons
   response.data = static_cast<int>(data);
   return true;
 }
+#endif
 
-bool UVCCameraDriver::setUVCExposureCb(SetInt32Request &request, SetInt32Response &response) {
-  if (request.data == 0) {
-    ROS_ERROR("set auto mode");
+bool UVCCameraDriver::setUVCExposure(int value) {
+  if (value == 0) {
+    UERROR("set auto mode");
     uvc_error_t err = uvc_set_ae_mode(device_handle_, 8);  // 8才是自动8: aperture priority mode
-    ROS_ERROR("ret :%d", (int)err);
+    UERROR("ret :%d", (int)err);
     return true;
   }
   uint32_t max_expo, min_expo;
   uvc_get_exposure_abs(device_handle_, &max_expo, UVC_GET_MAX);
   uvc_get_exposure_abs(device_handle_, &min_expo, UVC_GET_MIN);
-  if (request.data < static_cast<int>(min_expo) || request.data > static_cast<int>(max_expo)) {
-    std::stringstream ss;
-    ss << "Exposure value out of range. Min: " << min_expo << ", Max: " << max_expo;
-    response.message = ss.str();
-    ROS_ERROR_STREAM(response.message);
+  if (value < static_cast<int>(min_expo) || value > static_cast<int>(max_expo)) {
+    UERROR("Exposure value out of range. Min: %d, Max: %d", (int)min_expo, (int)max_expo);
     return false;
   }
   uvc_set_ae_mode(
       device_handle_,
       1);  // mode 1: manual mode; 2: auto mode; 4: shutter priority mode; 8: aperture priority mode
 
-  uvc_error_t err = uvc_set_exposure_abs(device_handle_, request.data);
+  uvc_error_t err = uvc_set_exposure_abs(device_handle_, value);
   if (err != UVC_SUCCESS) {
     auto msg = uvc_strerror(err);
-    ROS_ERROR_STREAM("setUVCExposureCb " << msg);
-    response.message = msg;
+    UERROR("setUVCExposure %s", msg);
     return false;
   }
   return true;
 }
 
+#if 0
 bool UVCCameraDriver::getUVCGainCb(GetInt32Request &request, GetInt32Response &response) {
   (void)request;
   uint16_t gain;
@@ -824,28 +823,26 @@ bool UVCCameraDriver::getUVCGainCb(GetInt32Request &request, GetInt32Response &r
   }
   return true;
 }
+#endif
 
-bool UVCCameraDriver::setUVCGainCb(SetInt32Request &request, SetInt32Response &response) {
+bool UVCCameraDriver::setUVCGain(int value) {
   uint16_t min_gain, max_gain;
   uvc_get_gain(device_handle_, &min_gain, UVC_GET_MIN);
   uvc_get_gain(device_handle_, &max_gain, UVC_GET_MAX);
-  if (request.data < min_gain || request.data > max_gain) {
-    std::stringstream ss;
-    ss << "Gain must be between " << min_gain << " and " << max_gain;
-    response.message = ss.str();
-    ROS_ERROR_STREAM(response.message);
+  if (value < min_gain || value > max_gain) {
+    UERROR("Gain must be between %d and %d", (int)min_gain, (int)max_gain);
     return false;
   }
-  uvc_error_t err = uvc_set_gain(device_handle_, request.data);
+  uvc_error_t err = uvc_set_gain(device_handle_, value);
   if (err != UVC_SUCCESS) {
     auto msg = uvc_strerror(err);
-    ROS_ERROR_STREAM("setUVCGainCb " << msg);
-    response.message = msg;
+    UERROR("setUVCGain %s", msg);
     return false;
   }
   return true;
 }
 
+#if 0
 bool UVCCameraDriver::getUVCWhiteBalanceCb(GetInt32Request &request, GetInt32Response &response) {
   (void)request;
   uint16_t data;
@@ -924,14 +921,14 @@ bool UVCCameraDriver::getUVCMirrorCb(GetInt32Request &request, GetInt32Response 
   }
   return true;
 }
+#endif
 
-bool UVCCameraDriver::setUVCMirrorCb(std_srvs::SetBoolRequest &request,
-                                     std_srvs::SetBoolResponse &response) {
-  (void)response;
-  uvc_flip_ = request.data;
+bool UVCCameraDriver::setUVCMirror(bool enable) {
+  uvc_flip_ = enable;
   return true;
 }
 
+#if 0
 bool UVCCameraDriver::toggleUVCCamera(std_srvs::SetBoolRequest &request,
                                       std_srvs::SetBoolResponse &response) {
   (void)response;
