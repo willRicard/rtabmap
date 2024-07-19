@@ -72,16 +72,10 @@ class UVCCameraDriver {
 
   void setupCameraParams();
 
-#if 0
   void updateConfig(const UVCCameraConfig& config);
 
   void setVideoMode();
 
-  void imageSubscribedCallback();
-
-  void imageUnsubscribedCallback();
-
-#endif
   void startStreaming();
 
   void stopStreaming() noexcept;

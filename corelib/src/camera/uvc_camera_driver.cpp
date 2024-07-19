@@ -236,7 +236,6 @@ void UVCCameraDriver::openCamera() {
   }
   err = uvc_open(device_, &device_handle_);
   if (err != UVC_SUCCESS) {
-    std::stringstream ss;
     if (UVC_ERROR_ACCESS == err) {
       UERROR("Permission denied opening /dev/bus/usb/%d/", uvc_get_bus_number(device_));
     } else {
@@ -258,7 +257,6 @@ void UVCCameraDriver::openCamera() {
   is_camera_opened_ = true;
 }
 
-#if 0
 void UVCCameraDriver::updateConfig(const UVCCameraConfig &config) { config_ = config; }
 
 void UVCCameraDriver::setVideoMode() {
@@ -267,18 +265,23 @@ void UVCCameraDriver::setVideoMode() {
   int height = config_.height;
   int fps = config_.fps;
   uvc_error_t err;
-  CHECK_NOTNULL(device_);
-  CHECK_NOTNULL(device_handle_);
+  if (device_ == nullptr) {
+      UERROR("Check failed libuvc device is NULL");
+      return;
+  }
+  if (device_handle_ == NULL) {
+      UERROR("Check failed libuvc device handle is NULL");
+      return;
+  }
   for (int i = 0; i < 5; i++) {
     err = uvc_get_stream_ctrl_format_size(device_handle_, &ctrl_, uvc_format, width, height, fps);
     if (err == UVC_SUCCESS) {
       break;
     }
   }
-  ROS_INFO_STREAM("set uvc mode " << width << "x" << height << "@" << fps << " format "
-                                  << config_.format);
+  UINFO("set uvc mode %dx%d@%d format %s", width, height, fps, config_.format.c_str());
   if (err != UVC_SUCCESS) {
-    ROS_ERROR_STREAM("set uvc ctrl error " << uvc_strerror(err));
+    UERROR("set uvc ctrl error %s", uvc_strerror(err));
     uvc_close(device_handle_);
     device_handle_ = nullptr;
     uvc_unref_device(device_);
@@ -287,38 +290,29 @@ void UVCCameraDriver::setVideoMode() {
   }
 }
 
-void UVCCameraDriver::imageSubscribedCallback() {
-  ROS_INFO_STREAM("UVCCameraDriver image subscribed");
-  startStreaming();
-}
-
-void UVCCameraDriver::imageUnsubscribedCallback() {
-  ROS_INFO_STREAM("UVCCameraDriver image unsubscribed");
-  auto subscriber_count = image_publisher_.getNumSubscribers();
-  if (subscriber_count == 0) {
-    stopStreaming();
-  }
-}
-#endif
-
 void UVCCameraDriver::startStreaming() {
-#if 0
   if (is_streaming_started) {
-    ROS_WARN_STREAM("UVCCameraDriver streaming is already started");
+    UWARN("UVCCameraDriver streaming is already started");
     return;
   }
   if (!is_camera_opened_) {
-    ROS_WARN_STREAM("UVCCameraDriver camera is not opened");
+    UWARN("UVCCameraDriver camera is not opened");
     return;
   }
-  CHECK_NOTNULL(device_);
-  CHECK_NOTNULL(device_handle_);
+  if (device_ == nullptr) {
+      UERROR("Check failed libuvc device is NULL");
+      return;
+  }
+  if (device_handle_) {
+      UERROR("Check failed libuvc device handle is NULL");
+      return;
+  }
   setVideoMode();
   uvc_error_t stream_err =
       uvc_start_streaming(device_handle_, &ctrl_, &UVCCameraDriver::frameCallbackWrapper, this, 0);
   if (stream_err != UVC_SUCCESS) {
-    ROS_ERROR_STREAM("uvc start streaming error " << uvc_strerror(stream_err) << " retry "
-                                                  << config_.retry_count << " times");
+    UERROR("uvc start streaming error %s retry %d times", uvc_strerror(stream_err),
+        config_.retry_count);
     for (int i = 0; i < config_.retry_count; i++) {
       stream_err = uvc_start_streaming(device_handle_, &ctrl_,
                                        &UVCCameraDriver::frameCallbackWrapper, this, 0);
@@ -337,7 +331,6 @@ void UVCCameraDriver::startStreaming() {
     return;
   }
   is_streaming_started.store(true);
-#endif
 }
 
 void UVCCameraDriver::stopStreaming() noexcept {
