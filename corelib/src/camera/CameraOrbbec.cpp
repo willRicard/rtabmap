@@ -297,7 +297,7 @@ bool CameraOrbbec::init(const std::string & calibrationFolder, const std::string
 	uvc_config.width = 640;
 	uvc_config.height = 480;
 	uvc_config.fps = 30;
-	uvc_config.format = "rgb";
+	uvc_config.format = "mjpeg";
 	uvc_config.retry_count = 500;
     _color_driver = new astra_camera::UVCCameraDriver(uvc_config);
     if (_color_driver->device_handle_ == nullptr) {
