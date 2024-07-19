@@ -90,14 +90,13 @@ std::ostream &operator<<(std::ostream &os, const UVCCameraConfig &config) {
   return os;
 }
 
-#if 0
 void UVCCameraDriver::setupCameraParams() {
   // auto exposure
   if (enable_color_auto_exposure_) {
-    ROS_INFO("enable color auto exposure");
+    UINFO("enable color auto exposure");
     uvc_set_ae_mode(device_handle_, 8);
   } else {
-    ROS_INFO("disable color auto exposure");
+    UINFO("disable color auto exposure");
     uvc_set_ae_mode(device_handle_, 1);
   }
   if (exposure_ != -1) {
@@ -105,8 +104,7 @@ void UVCCameraDriver::setupCameraParams() {
     uvc_get_exposure_abs(device_handle_, &max_expo, UVC_GET_MAX);
     uvc_get_exposure_abs(device_handle_, &min_expo, UVC_GET_MIN);
     if (exposure_ < static_cast<int>(min_expo) || exposure_ > static_cast<int>(max_expo)) {
-      ROS_WARN_STREAM("exposure value " << exposure_ << " is out of range [" << min_expo << ", "
-                                        << max_expo << "], set to auto mode");
+      UWARN("exposure value %d is out of range [%d, %d], set to auto mode", exposure_, min_expo, max_expo);
       uvc_set_ae_mode(device_handle_, 1);
     } else {
       uvc_set_ae_mode(device_handle_,
@@ -120,8 +118,7 @@ void UVCCameraDriver::setupCameraParams() {
     uvc_get_gain(device_handle_, &min_gain, UVC_GET_MIN);
     uvc_get_gain(device_handle_, &max_gain, UVC_GET_MAX);
     if (gain_ < min_gain || gain_ > max_gain) {
-      ROS_WARN_STREAM("gain value " << gain_ << " is out of range [" << min_gain << ", " << max_gain
-                                    << "], set to auto mode");
+      UWARN("gain value %d is out of range [%d, %d], set to auto mode", gain_, min_gain, max_gain);
       uvc_set_ae_mode(device_handle_, 1);
     } else {
       uvc_set_ae_mode(device_handle_, 1);
@@ -129,98 +126,82 @@ void UVCCameraDriver::setupCameraParams() {
     }
   }
 }
-#endif
 
 UVCCameraDriver::UVCCameraDriver(const UVCCameraConfig &camera_info,
                                  const std::string &serial_number)
     : config_(camera_info) {
-#if 0
   auto err = uvc_init(&ctx_, nullptr);
   if (err != UVC_SUCCESS) {
     uvc_perror(err, "ERROR: uvc_init");
-    ROS_ERROR_STREAM("init uvc context failed, exit");
+    UERROR("init uvc context failed, exit");
     throw std::runtime_error("init uvc context failed");
   }
   config_.serial_number = serial_number;
-  device_num_ = nh_private_.param<int>("device_num", 1);
-  uvc_flip_ = nh_private_.param<bool>("uvc_flip", false);
-  flip_color_ = nh_private_.param<bool>("flip_color", false);
-  config_.vendor_id = nh_private_.param<int>("uvc_vendor_id", 0x0);
-  config_.product_id = nh_private_.param<int>("uvc_product_id", 0x0);
-  config_.width = nh_private_.param<int>("color_width", 640);
-  config_.height = nh_private_.param<int>("color_height", 480);
-  config_.fps = nh_private_.param<int>("color_fps", 30);
-  config_.format = nh_private.param<std::string>("uvc_camera_format", "mjpeg");
-  config_.retry_count = nh_private.param<int>("uvc_retry_count", 500);
-  roi_.x = nh_private.param<int>("color_roi_x", -1);
-  roi_.y = nh_private.param<int>("color_roi_y", -1);
-  roi_.width = nh_private.param<int>("color_roi_width", -1);
-  roi_.height = nh_private.param<int>("color_roi_height", -1);
-  camera_name_ = nh_private.param<std::string>("camera_name", "camera");
-  enable_color_auto_exposure_ = nh_private.param<bool>("enable_color_auto_exposure", true);
-  gain_ = nh_private.param<int>("color_gain", -1);
-  exposure_ = nh_private.param<int>("color_exposure", -1);
-  config_.frame_id = camera_name_ + "_color_frame";
-  config_.optical_frame_id = camera_name_ + "_color_optical_frame";
-  camera_info_publisher_ = nh_.advertise<sensor_msgs::CameraInfo>("color/camera_info", 1, true);
-  color_info_uri_ = nh_private.param<std::string>("color_info_uri", "");
-  color_info_manager_ =
-      std::make_shared<camera_info_manager::CameraInfoManager>(nh_, "rgb_camera", color_info_uri_);
+  device_num_ = 1;
+  uvc_flip_ = false;
+  flip_color_ = false;
+  config_.vendor_id = 0x2bc5;
+  config_.product_id = 0x050e;
+  roi_.x = -1;
+  roi_.y = -1;
+  roi_.width = -1;
+  roi_.height = -1;
+  camera_name_ = "camera";
+  enable_color_auto_exposure_ = true;
+  gain_ = -1;
+  exposure_ = -1;
   frame_buffer_ = uvc_allocate_frame(config_.width * config_.height * 3);
-  CHECK_NOTNULL(frame_buffer_);
-  setupCameraControlService();
+  if (frame_buffer_ == nullptr) {
+      UERROR("Null pointer received from uvc_allocate_frame");
+      throw std::runtime_error("allocate uvc frame failed");
+  }
   openCamera();
   setupCameraParams();
-  auto info = getCameraInfo();
-  camera_info_publisher_.publish(info);
 #if defined(USE_RK_MPP)
   mppInit();
-#endif
-  image_publisher_ = nh_.advertise<sensor_msgs::Image>(
-      "color/image_raw", 10, boost::bind(&UVCCameraDriver::imageSubscribedCallback, this),
-      boost::bind(&UVCCameraDriver::imageUnsubscribedCallback, this));
 #endif
 }
 
 UVCCameraDriver::~UVCCameraDriver() {
-#if 0
   stopStreaming();
   if (device_handle_) {
-    ROS_INFO("uvc close device");
+    UINFO("uvc close device");
     uvc_close(device_handle_);
-    ROS_INFO("uvc close device done");
+    UINFO("uvc close device done");
     device_handle_ = nullptr;
   }
   if (device_) {
-    ROS_INFO("uvc unref device");
+    UINFO("uvc unref device");
     uvc_unref_device(device_);
-    ROS_INFO("uvc unref device done");
+    UINFO("uvc unref device done");
     device_ = nullptr;
   }
   if (ctx_) {
-    ROS_INFO("uvc exit");
+    UINFO("uvc exit");
     uvc_exit(ctx_);
-    ROS_INFO("uvc exit done");
+    UINFO("uvc exit done");
     ctx_ = nullptr;
   }
   if (frame_buffer_) {
-    ROS_INFO("uvc free frame");
+    UINFO("uvc free frame");
     uvc_free_frame(frame_buffer_);
     frame_buffer_ = nullptr;
-    ROS_INFO("uvc free frame done");
+    UINFO("uvc free frame done");
   }
 #if defined(USE_RK_MPP)
   mppDeInit();
 #endif
-#endif
 }
 
-#if 0
 void UVCCameraDriver::openCamera() {
-  ROS_INFO_STREAM("open uvc camera");
+  UINFO("open uvc camera");
   uvc_error_t err;
   auto serial_number = config_.serial_number.empty() ? nullptr : config_.serial_number.c_str();
-  CHECK(device_ == nullptr);
+  if(device_ == nullptr)
+  {
+      UERROR("Check failed libuvc device is NULL");
+      return;
+  }
   err = uvc_find_device(ctx_, &device_, config_.vendor_id, config_.product_id, serial_number);
   if (err != UVC_SUCCESS && device_num_ == 1) {
     // retry serial number == nullptr
@@ -228,7 +209,7 @@ void UVCCameraDriver::openCamera() {
   }
   if (err != UVC_SUCCESS) {
     uvc_perror(err, "ERROR: uvc_find_device");
-    ROS_ERROR_STREAM("find uvc device failed, retry " << config_.retry_count << " times");
+    UERROR("find uvc device failed, retry %d times", config_.retry_count);
     for (int i = 0; i < config_.retry_count; i++) {
       err = uvc_find_device(ctx_, &device_, config_.vendor_id, config_.product_id, serial_number);
       if (err == UVC_SUCCESS) {
@@ -237,41 +218,46 @@ void UVCCameraDriver::openCamera() {
       usleep(100 * i);
     }
   }
-  ROS_INFO_STREAM("uvc config: " << config_);
+  std::stringstream ss;
+  ss << "uvc config: " << config_;
+  UERROR("%s", ss.str().c_str());
   if (err != UVC_SUCCESS) {
-    std::stringstream ss;
-    ss << "Find device error " << uvc_strerror(err) << " process will be exit";
-    ROS_ERROR_STREAM(ss.str());
+    UERROR("Find device error %s process will be exit", uvc_strerror(err));
     if (device_ != nullptr) {
       uvc_unref_device(device_);
     }
     device_ = nullptr;
     throw std::runtime_error(ss.str());
   }
-  CHECK(device_handle_ == nullptr);
+  if(device_handle_ == nullptr) {
+      UERROR("Check failed libuvc device handle is NULL");
+      return;
+  }
   err = uvc_open(device_, &device_handle_);
   if (err != UVC_SUCCESS) {
     std::stringstream ss;
     if (UVC_ERROR_ACCESS == err) {
-      ss << "Permission denied opening /dev/bus/usb/" << uvc_get_bus_number(device_) << "/"
-         << uvc_get_device_address(device_);
-      ROS_ERROR_STREAM(ss.str());
+      UERROR("Permission denied opening /dev/bus/usb/%d/", uvc_get_bus_number(device_));
     } else {
-      ss << "Can't open /dev/bus/usb/" << uvc_get_bus_number(device_) << "/"
-         << uvc_get_device_address(device_) << ": " << uvc_strerror(err) << " (" << err << ")";
-      ROS_ERROR_STREAM(ss.str());
+      UERROR("Can't open /dev/bus/usb/%d/%d: %s (%d)", uvc_get_bus_number(device_),
+          uvc_get_device_address(device_), uvc_strerror(err), err);
     }
     uvc_unref_device(device_);
     device_ = nullptr;
-    throw std::runtime_error(ss.str());
+    throw std::runtime_error("Cannot open libuvc device");
   }
   uvc_set_status_callback(device_handle_, &UVCCameraDriver::autoControlsCallbackWrapper, this);
-  CHECK_NOTNULL(device_handle_);
-  CHECK_NOTNULL(device_);
-  ROS_INFO_STREAM("open camera success");
+  if (device_handle_ == nullptr) {
+      UERROR("Check failed device_handle_ is NULL");
+  }
+  if (device_ == nullptr) {
+      UERROR("Check failed device_ is NULL");
+  }
+  UINFO("open camera success");
   is_camera_opened_ = true;
 }
 
+#if 0
 void UVCCameraDriver::updateConfig(const UVCCameraConfig &config) { config_ = config; }
 
 void UVCCameraDriver::setVideoMode() {
@@ -354,17 +340,16 @@ void UVCCameraDriver::startStreaming() {
 }
 
 void UVCCameraDriver::stopStreaming() noexcept {
-#if 0
   if (!is_streaming_started) {
-    ROS_WARN_STREAM("streaming is already stopped");
+    UWARN("streaming is already stopped");
     return;
   }
-  ROS_INFO_STREAM("stop uvc streaming");
+  UINFO("stop uvc streaming");
   uvc_stop_streaming(device_handle_);
   is_streaming_started.store(false);
-#endif
 }
 
+#if 0
 int UVCCameraDriver::getResolutionX() const { return config_.width; }
 
 int UVCCameraDriver::getResolutionY() const { return config_.height; }
@@ -539,86 +524,6 @@ bool UVCCameraDriver::MPPDecodeFrame(uvc_frame_t *frame, uint8_t *rgb_data) {
 }
 
 #endif
-
-void UVCCameraDriver::setupCameraControlService() {
-  get_uvc_exposure_srv_ = nh_.advertiseService<GetInt32Request, GetInt32Response>(
-      "get_uvc_exposure", [this](auto &&request, auto &&response) {
-        response.success = this->getUVCExposureCb(request, response);
-        return response.success;
-      });
-  set_uvc_exposure_srv_ = nh_.advertiseService<SetInt32Request, SetInt32Response>(
-      "set_uvc_exposure", [this](auto &&request, auto &&response) {
-        response.success = this->setUVCExposureCb(request, response);
-        return response.success;
-      });
-  get_uvc_gain_srv_ = nh_.advertiseService<GetInt32Request, GetInt32Response>(
-      "get_uvc_gain", [this](auto &&request, auto &&response) {
-        response.success = this->getUVCGainCb(request, response);
-        return response.success;
-      });
-  set_uvc_gain_srv_ = nh_.advertiseService<SetInt32Request, SetInt32Response>(
-      "set_uvc_gain", [this](auto &&request, auto &&response) {
-        response.success = this->setUVCGainCb(request, response);
-        return response.success;
-      });
-  get_uvc_white_balance_srv_ = nh_.advertiseService<GetInt32Request, GetInt32Response>(
-      "get_uvc_white_balance", [this](auto &&request, auto &&response) {
-        response.success = this->getUVCWhiteBalanceCb(request, response);
-        return response.success;
-      });
-  set_uvc_white_balance_srv_ = nh_.advertiseService<SetInt32Request, SetInt32Response>(
-      "set_uvc_white_balance", [this](auto &&request, auto &&response) {
-        response.success = this->setUVCWhiteBalanceCb(request, response);
-        return response.success;
-      });
-  set_uvc_auto_exposure_srv_ =
-      nh_.advertiseService<std_srvs::SetBoolRequest, std_srvs::SetBoolResponse>(
-          "set_uvc_auto_exposure", [this](auto &&request, auto &&response) {
-            response.success = this->setUVCAutoExposureCb(request, response);
-            return response.success;
-          });
-  set_uvc_auto_white_balance_srv_ =
-      nh_.advertiseService<std_srvs::SetBoolRequest, std_srvs::SetBoolResponse>(
-          "set_uvc_auto_white_balance", [this](auto &&request, auto &&response) {
-            response.success = this->setUVCAutoWhiteBalanceCb(request, response);
-            return response.success;
-          });
-
-  get_uvc_mirror_srv_ = nh_.advertiseService<GetInt32Request, GetInt32Response>(
-      "get_uvc_mirror", [this](auto &&request, auto &&response) {
-        response.success = this->getUVCMirrorCb(request, response);
-        return response.success;
-      });
-  set_uvc_mirror_srv_ = nh_.advertiseService<std_srvs::SetBoolRequest, std_srvs::SetBoolResponse>(
-      "set_uvc_mirror", [this](auto &&request, auto &&response) {
-        response.success = this->setUVCMirrorCb(request, response);
-        return response.success;
-      });
-
-  toggle_uvc_camera_srv_ =
-      nh_.advertiseService<std_srvs::SetBoolRequest, std_srvs::SetBoolResponse>(
-          "toggle_uvc_camera", [this](auto &&request, auto &&response) {
-            response.success = this->toggleUVCCamera(request, response);
-            return response.success;
-          });
-  save_image_srv_ = nh_.advertiseService<std_srvs::EmptyRequest, std_srvs::EmptyResponse>(
-      "save_uvc_image", [this](auto &&request, auto &&response) {
-        return this->saveImageCallback(request, response);
-      });
-}
-
-sensor_msgs::CameraInfo UVCCameraDriver::getCameraInfo() {
-  if (color_info_manager_ && color_info_manager_->isCalibrated()) {
-    auto camera_info = color_info_manager_->getCameraInfo();
-    camera_info.header.frame_id = config_.optical_frame_id;
-    camera_info.header.stamp = ros::Time::now();
-    return camera_info;
-  } else {
-    camera_info_.header.frame_id = config_.optical_frame_id;
-    camera_info_.header.stamp = ros::Time::now();
-    return camera_info_;
-  }
-}
 
 enum uvc_frame_format UVCCameraDriver::UVCFrameFormatString(const std::string &format) {
   if (format == "uncompressed") {

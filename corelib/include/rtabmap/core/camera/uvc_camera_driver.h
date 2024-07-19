@@ -61,6 +61,13 @@ struct UVCCameraConfig {
     UVCCameraConfig& operator=(UVCCameraConfig&&) = default;
 };
 
+struct ImageROI {
+    int x = -1;
+    int y = -1;
+    int width = -1;
+    int height = -1;
+};
+
 std::ostream& operator<<(std::ostream& os, const UVCCameraConfig& config);
 
 class UVCCameraDriver {
@@ -70,9 +77,9 @@ class UVCCameraDriver {
 
   ~UVCCameraDriver();
 
-#if 0
   void setupCameraParams();
 
+#if 0
   void updateConfig(const UVCCameraConfig& config);
 
   void setVideoMode();
@@ -98,10 +105,6 @@ class UVCCameraDriver {
 #endif
 
  private:
-  void setupCameraControlService();
-
-  sensor_msgs::CameraInfo getCameraInfo();
-
   static enum uvc_frame_format UVCFrameFormatString(const std::string& format);
 
   static void frameCallbackWrapper(uvc_frame_t* frame, void* ptr);
@@ -115,8 +118,8 @@ class UVCCameraDriver {
                                           int selector, enum uvc_status_attribute status_attribute,
                                           void* data, size_t data_len, void* ptr);
 
-  void openCamera();
 #endif
+  void openCamera();
 
   int getUVCExposure();
 
@@ -149,46 +152,21 @@ class UVCCameraDriver {
   int UVCGetControl(int control, int unit, int len, uvc_req_code req_code);
 
  private:
-  ros::NodeHandle nh_;
-  ros::NodeHandle nh_private_;
 #endif
   UVCCameraConfig config_;
-#if 0
   std::string camera_name_ = "camera";
-  std::string frame_id_;
-  std::string color_info_uri_;
   ImageROI roi_;
   uvc_context_t* ctx_ = nullptr;
   uvc_device_t* device_ = nullptr;
-#endif
   uvc_device_handle_t* device_handle_ = nullptr;
-#if 0
   uvc_frame_t* frame_buffer_ = nullptr;
   uvc_stream_ctrl_t ctrl_{};
-#endif
   std::atomic_bool uvc_flip_{false};
-#if 0
   std::atomic_bool is_streaming_started{false};
   std::atomic_bool save_image_{false};
   std::atomic_bool is_camera_opened_{false};
   bool flip_color_ = false;
 
-  ros::ServiceServer get_uvc_exposure_srv_;
-  ros::ServiceServer set_uvc_exposure_srv_;
-  ros::ServiceServer get_uvc_gain_srv_;
-  ros::ServiceServer set_uvc_gain_srv_;
-  ros::ServiceServer get_uvc_white_balance_srv_;
-  ros::ServiceServer set_uvc_white_balance_srv_;
-  ros::ServiceServer set_uvc_auto_exposure_srv_;
-  ros::ServiceServer set_uvc_auto_white_balance_srv_;
-  ros::ServiceServer get_uvc_mirror_srv_;
-  ros::ServiceServer set_uvc_mirror_srv_;
-  ros::ServiceServer toggle_uvc_camera_srv_;
-  ros::ServiceServer save_image_srv_;
-  ros::Publisher image_publisher_;
-  ros::Publisher camera_info_publisher_;
-  sensor_msgs::CameraInfo camera_info_;
-  std::shared_ptr<camera_info_manager::CameraInfoManager> color_info_manager_ = nullptr;
   int device_num_ = 1;
   bool enable_color_auto_exposure_ = true;
   int exposure_ = -1;
@@ -208,7 +186,6 @@ class UVCCameraDriver {
   MppBufferGroup mpp_packet_group_ = nullptr;
   MppTask mpp_task_ = nullptr;
   uint32_t need_split_ = 0;
-#endif
 #endif
 };
 }  // namespace astra_camera
