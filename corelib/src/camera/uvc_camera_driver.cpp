@@ -312,8 +312,10 @@ void UVCCameraDriver::imageUnsubscribedCallback() {
     stopStreaming();
   }
 }
+#endif
 
 void UVCCameraDriver::startStreaming() {
+#if 0
   if (is_streaming_started) {
     ROS_WARN_STREAM("UVCCameraDriver streaming is already started");
     return;
@@ -348,9 +350,11 @@ void UVCCameraDriver::startStreaming() {
     return;
   }
   is_streaming_started.store(true);
+#endif
 }
 
 void UVCCameraDriver::stopStreaming() noexcept {
+#if 0
   if (!is_streaming_started) {
     ROS_WARN_STREAM("streaming is already stopped");
     return;
@@ -358,6 +362,7 @@ void UVCCameraDriver::stopStreaming() noexcept {
   ROS_INFO_STREAM("stop uvc streaming");
   uvc_stop_streaming(device_handle_);
   is_streaming_started.store(false);
+#endif
 }
 
 int UVCCameraDriver::getResolutionX() const { return config_.width; }
@@ -766,21 +771,18 @@ void UVCCameraDriver::autoControlsCallbackWrapper(enum uvc_status_class status_c
   auto driver = static_cast<UVCCameraDriver *>(ptr);
   driver->autoControlsCallback(status_class, event, selector, status_attribute, data, data_len);
 }
+#endif
 
-bool UVCCameraDriver::getUVCExposureCb(GetInt32Request &request, GetInt32Response &response) {
-  (void)request;
+int UVCCameraDriver::getUVCExposure() {
   uint32_t data;
   uvc_error_t err = uvc_get_exposure_abs(device_handle_, &data, UVC_GET_CUR);
   if (err != UVC_SUCCESS) {
     auto msg = uvc_strerror(err);
-    ROS_ERROR_STREAM("getUVCExposureCb " << msg);
-    response.message = msg;
-    return false;
+    UERROR("getUVCExposure %s", msg);
+    return 0;
   }
-  response.data = static_cast<int>(data);
-  return true;
+  return static_cast<int>(data);
 }
-#endif
 
 bool UVCCameraDriver::setUVCExposure(int value) {
   if (value == 0) {
@@ -809,21 +811,16 @@ bool UVCCameraDriver::setUVCExposure(int value) {
   return true;
 }
 
-#if 0
-bool UVCCameraDriver::getUVCGainCb(GetInt32Request &request, GetInt32Response &response) {
-  (void)request;
+int UVCCameraDriver::getUVCGain() {
   uint16_t gain;
   uvc_error_t err = uvc_get_gain(device_handle_, &gain, UVC_GET_CUR);
-  response.data = gain;
   if (err != UVC_SUCCESS) {
     auto msg = uvc_strerror(err);
-    ROS_ERROR_STREAM("getUVCGainCb " << msg);
-    response.message = msg;
+    UERROR("getUVCGain %s", msg);
     return false;
   }
-  return true;
+  return gain;
 }
-#endif
 
 bool UVCCameraDriver::setUVCGain(int value) {
   uint16_t min_gain, max_gain;

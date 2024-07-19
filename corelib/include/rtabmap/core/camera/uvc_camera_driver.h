@@ -81,9 +81,11 @@ class UVCCameraDriver {
 
   void imageUnsubscribedCallback();
 
+#endif
   void startStreaming();
 
   void stopStreaming() noexcept;
+#if 0
 
   int getResolutionX() const;
 
@@ -114,16 +116,14 @@ class UVCCameraDriver {
                                           void* data, size_t data_len, void* ptr);
 
   void openCamera();
-
-  bool getUVCExposureCb(GetInt32Request& request, GetInt32Response& response);
-
 #endif
+
+  int getUVCExposure();
+
   bool setUVCExposure(int value);
-#if 0
 
-  bool getUVCGainCb(GetInt32Request& request, GetInt32Response& response);
+  int getUVCGain();
 
-#endif
   bool setUVCGain(int value);
 #if 0
 

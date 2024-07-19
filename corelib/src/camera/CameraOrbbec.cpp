@@ -277,10 +277,9 @@ bool CameraOrbbec::init(const std::string & calibrationFolder, const std::string
 		return false;
 	}
 
-	if(_device->getSensorInfo(openni::SENSOR_DEPTH) == NULL ||
-	  _device->getSensorInfo(_type==kTypeColorDepth?openni::SENSOR_COLOR:openni::SENSOR_IR) == NULL)
+	if(_device->getSensorInfo(openni::SENSOR_DEPTH) == NULL)
 	{
-		UERROR("CameraOrbbec: Cannot get sensor info for depth and %s.", _type==kTypeColorDepth?"color":"ir");
+		UERROR("CameraOrbbec: Cannot get sensor info for depth");
 		_device->close();
 		openni::OpenNI::shutdown();
 		return false;
@@ -294,14 +293,19 @@ bool CameraOrbbec::init(const std::string & calibrationFolder, const std::string
 		return false;
 	}
 
-	if(_color->create(*_device, _type==kTypeColorDepth?openni::SENSOR_COLOR:openni::SENSOR_IR) != openni::STATUS_OK)
-	{
-		UERROR("CameraOrbbec: Cannot create %s stream.", _type==kTypeColorDepth?"color":"ir");
-		_depth->destroy();
-		_device->close();
-		openni::OpenNI::shutdown();
-		return false;
-	}
+	astra_camera::UVCCameraConfig uvc_config;
+	uvc_config.width = 640;
+	uvc_config.height = 480;
+	uvc_config.fps = 30;
+	uvc_config.format = "rgb";
+    _color_driver = new astra_camera::UVCCameraDriver(uvc_config);
+    if (_color_driver->device_handle_ == nullptr) {
+        UERROR("CameraOrbbec: Cannot create color stream.");
+        _depth->destroy();
+        _device->close();
+        openni::OpenNI::shutdown();
+        return false;
+    }
 
 	if(_type==kTypeColorDepth && hardwareRegistration &&
 	   _device->setImageRegistrationMode(openni::IMAGE_REGISTRATION_DEPTH_TO_COLOR ) != openni::STATUS_OK)
@@ -315,7 +319,7 @@ bool CameraOrbbec::init(const std::string & calibrationFolder, const std::string
 	}
 
 	_depth->setMirroringEnabled(false);
-	_color->setMirroringEnabled(false);
+	_color_driver->setUVCMirror(false);
 
 	const openni::Array<openni::VideoMode>& depthVideoModes = _depth->getSensorInfo().getSupportedVideoModes();
 	for(int i=0; i<depthVideoModes.getSize(); ++i)
@@ -328,29 +332,11 @@ bool CameraOrbbec::init(const std::string & calibrationFolder, const std::string
 				depthVideoModes[i].getResolutionY());
 	}
 
-	const openni::Array<openni::VideoMode>& colorVideoModes = _color->getSensorInfo().getSupportedVideoModes();
-	for(int i=0; i<colorVideoModes.getSize(); ++i)
-	{
-		UINFO("CameraOrbbec: %s video mode %d: fps=%d, pixel=%d, w=%d, h=%d",
-				_type==kTypeColorDepth?"color":"ir",
-				i,
-				colorVideoModes[i].getFps(),
-				colorVideoModes[i].getPixelFormat(),
-				colorVideoModes[i].getResolutionX(),
-				colorVideoModes[i].getResolutionY());
-	}
-
 	openni::VideoMode mMode;
 	mMode.setFps(30);
 	mMode.setResolution(640,480);
 	mMode.setPixelFormat(openni::PIXEL_FORMAT_DEPTH_1_MM);
 	_depth->setVideoMode(mMode);
-
-	openni::VideoMode mModeColor;
-	mModeColor.setFps(30);
-	mModeColor.setResolution(640,480);
-	mModeColor.setPixelFormat(openni::PIXEL_FORMAT_RGB888);
-	_color->setVideoMode(mModeColor);
 
 	UINFO("CameraOrbbec: Using depth video mode: fps=%d, pixel=%d, w=%d, h=%d, H-FOV=%f rad, V-FOV=%f rad",
 			_depth->getVideoMode().getFps(),
@@ -359,14 +345,7 @@ bool CameraOrbbec::init(const std::string & calibrationFolder, const std::string
 			_depth->getVideoMode().getResolutionY(),
 			_depth->getHorizontalFieldOfView(),
 			_depth->getVerticalFieldOfView());
-	UINFO("CameraOrbbec: Using %s video mode: fps=%d, pixel=%d, w=%d, h=%d, H-FOV=%f rad, V-FOV=%f rad",
-			_type==kTypeColorDepth?"color":"ir",
-			_color->getVideoMode().getFps(),
-			_color->getVideoMode().getPixelFormat(),
-			_color->getVideoMode().getResolutionX(),
-			_color->getVideoMode().getResolutionY(),
-			_color->getHorizontalFieldOfView(),
-			_color->getVerticalFieldOfView());
+	UINFO("CameraOrbbec: Using color video mode: fps=30, pixel=rgb, w=640, h=480, H-FOV=1.23918 rad, V-FOV=0.76270 rad");
 
 	if(_depth->getVideoMode().getResolutionX() != 640 ||
 		_depth->getVideoMode().getResolutionY() != 480 ||
@@ -375,39 +354,20 @@ bool CameraOrbbec::init(const std::string & calibrationFolder, const std::string
 		UERROR("Could not set depth format to 640x480 pixel=%d(mm)!",
 				openni::PIXEL_FORMAT_DEPTH_1_MM);
 		_depth->destroy();
-		_color->destroy();
-		_device->close();
-		openni::OpenNI::shutdown();
-		return false;
-	}
-	if(_color->getVideoMode().getResolutionX() != 640 ||
-		_color->getVideoMode().getResolutionY() != 480 ||
-		_color->getVideoMode().getPixelFormat() != openni::PIXEL_FORMAT_RGB888)
-	{
-		UERROR("Could not set %s format to 640x480 pixel=%d!",
-				_type==kTypeColorDepth?"color":"ir",
-				openni::PIXEL_FORMAT_RGB888);
-		_depth->destroy();
-		_color->destroy();
 		_device->close();
 		openni::OpenNI::shutdown();
 		return false;
 	}
 
-	if(_color->getCameraSettings())
-	{
-		UINFO("CameraOrbbec: AutoWhiteBalanceEnabled = %d", _color->getCameraSettings()->getAutoWhiteBalanceEnabled()?1:0);
-		UINFO("CameraOrbbec: AutoExposureEnabled = %d", _color->getCameraSettings()->getAutoExposureEnabled()?1:0);
-#if ONI_VERSION_MAJOR > 2 || (ONI_VERSION_MAJOR==2 && ONI_VERSION_MINOR >= 2)
-		UINFO("CameraOrbbec: Exposure = %d", _color->getCameraSettings()->getExposure());
-		UINFO("CameraOrbbec: GAIN = %d", _color->getCameraSettings()->getGain());
-#endif
-	}
+	UINFO("CameraOrbbec: AutoWhiteBalanceEnabled = 0");
+	UINFO("CameraOrbbec: AutoExposureEnabled = 1");
+	UINFO("CameraOrbbec: Exposure = %d", _color_driver->getUVCExposure());
+	UINFO("CameraOrbbec: GAIN = %d", _color_driver->getUVCGain());
 
 	if(_type==kTypeColorDepth && hardwareRegistration)
 	{
-		_depthFx = float(_color->getVideoMode().getResolutionX()/2) / std::tan(_color->getHorizontalFieldOfView()/2.0f);
-		_depthFy = float(_color->getVideoMode().getResolutionY()/2) / std::tan(_color->getVerticalFieldOfView()/2.0f);
+		_depthFx = float(640.0f/2.0f) / std::tan(1.23918f/2.0f);
+		_depthFy = float(480.0f/2.0f) / std::tan(0.76270/2.0f);
 	}
 	else
 	{
@@ -421,18 +381,17 @@ bool CameraOrbbec::init(const std::string & calibrationFolder, const std::string
 		UWARN("With type IR-only, depth stream will not be started");
 	}
 
-	if((_type != kTypeIR && _depth->start() != openni::STATUS_OK) ||
-		_color->start() != openni::STATUS_OK)
+	if(_type != kTypeIR && _depth->start() != openni::STATUS_OK)
 	{
 		UERROR("CameraOrbbec: Cannot start depth and/or color streams.");
 		_depth->stop();
-		_color->stop();
+		_color_driver->stopStreaming();
 		_depth->destroy();
-		_color->destroy();
 		_device->close();
 		openni::OpenNI::shutdown();
 		return false;
 	}
+	_color_driver->startStreaming();
 
 	uSleep(3000); // just to make sure the sensor is correctly initialized and exposure is set
 
