@@ -50,6 +50,7 @@ CameraOrbbec::CameraOrbbec(
     ,
 	_type(type),
 	_device(new openni::Device()),
+	_color_driver(nullptr),
 	_color(new openni::VideoStream()),
 	_depth(new openni::VideoStream()),
 	_depthFx(0.0f),
@@ -65,6 +66,10 @@ CameraOrbbec::CameraOrbbec(
 
 CameraOrbbec::~CameraOrbbec()
 {
+    if (_color_driver != nullptr) {
+        delete _color_driver;
+        _color_driver = nullptr;
+    }
 #ifdef RTABMAP_OPENNI2
 	_color->stop();
 	_color->destroy();

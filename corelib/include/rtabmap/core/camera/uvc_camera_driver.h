@@ -63,12 +63,12 @@ std::ostream& operator<<(std::ostream& os, const UVCCameraConfig& config);
 
 class UVCCameraDriver {
  public:
-  explicit UVCCameraDriver(ros::NodeHandle& nh, ros::NodeHandle& nh_private,
-                           const sensor_msgs::CameraInfo& camera_info,
+  explicit UVCCameraDriver(const UVCCameraConfig& camera_info,
                            const std::string& serial_number = "");
 
   ~UVCCameraDriver();
 
+#if 0
   void setupCameraParams();
 
   void updateConfig(const UVCCameraConfig& config);
@@ -143,7 +143,9 @@ class UVCCameraDriver {
  private:
   ros::NodeHandle nh_;
   ros::NodeHandle nh_private_;
+#endif
   UVCCameraConfig config_;
+#if 0
   std::string camera_name_ = "camera";
   std::string frame_id_;
   std::string color_info_uri_;
@@ -194,6 +196,7 @@ class UVCCameraDriver {
   MppBufferGroup mpp_packet_group_ = nullptr;
   MppTask mpp_task_ = nullptr;
   uint32_t need_split_ = 0;
+#endif
 #endif
 };
 }  // namespace astra_camera

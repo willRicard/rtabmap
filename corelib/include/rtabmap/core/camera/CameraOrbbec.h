@@ -34,7 +34,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "rtabmap/core/camera/CameraOpenNI2.h"
 
-//#include "rtabmap/core/camera/uvc_camera_driver.h"
+#include "rtabmap/core/camera/uvc_camera_driver.h"
 
 namespace openni
 {
@@ -75,6 +75,7 @@ private:
 #ifdef RTABMAP_OPENNI2
 	Type _type;
 	openni::Device * _device;
+	astra_camera::UVCCameraDriver *_color_driver;
 	openni::VideoStream * _color;
 	openni::VideoStream * _depth;
 	float _depthFx;

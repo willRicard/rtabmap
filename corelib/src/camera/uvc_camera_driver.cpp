@@ -33,7 +33,6 @@
  *  POSSIBILITY OF SUCH DAMAGE.
  *********************************************************************/
 
-#if 0
 #include <rtabmap/core/camera/uvc_camera_driver.h>
 
 #include <cv_bridge/cv_bridge.h>
@@ -90,6 +89,7 @@ std::ostream &operator<<(std::ostream &os, const UVCCameraConfig &config) {
   return os;
 }
 
+#if 0
 void UVCCameraDriver::setupCameraParams() {
   // auto exposure
   if (enable_color_auto_exposure_) {
@@ -128,11 +128,12 @@ void UVCCameraDriver::setupCameraParams() {
     }
   }
 }
+#endif
 
-UVCCameraDriver::UVCCameraDriver(ros::NodeHandle &nh, ros::NodeHandle &nh_private,
-                                 const sensor_msgs::CameraInfo &camera_info,
+UVCCameraDriver::UVCCameraDriver(const UVCCameraConfig &camera_info,
                                  const std::string &serial_number)
-    : nh_(nh), nh_private_(nh_private), camera_info_(camera_info) {
+    : config_(camera_info) {
+#if 0
   auto err = uvc_init(&ctx_, nullptr);
   if (err != UVC_SUCCESS) {
     uvc_perror(err, "ERROR: uvc_init");
@@ -177,9 +178,11 @@ UVCCameraDriver::UVCCameraDriver(ros::NodeHandle &nh, ros::NodeHandle &nh_privat
   image_publisher_ = nh_.advertise<sensor_msgs::Image>(
       "color/image_raw", 10, boost::bind(&UVCCameraDriver::imageSubscribedCallback, this),
       boost::bind(&UVCCameraDriver::imageUnsubscribedCallback, this));
+#endif
 }
 
 UVCCameraDriver::~UVCCameraDriver() {
+#if 0
   stopStreaming();
   if (device_handle_) {
     ROS_INFO("uvc close device");
@@ -208,8 +211,10 @@ UVCCameraDriver::~UVCCameraDriver() {
 #if defined(USE_RK_MPP)
   mppDeInit();
 #endif
+#endif
 }
 
+#if 0
 void UVCCameraDriver::openCamera() {
   ROS_INFO_STREAM("open uvc camera");
   uvc_error_t err;
@@ -958,6 +963,6 @@ int UVCCameraDriver::UVCGetControl(int control, int unit, int len, uvc_req_code 
   }
   return SW_TO_SHORT(data);
 }
+#endif
 
 }  // namespace astra_camera
-#endif
