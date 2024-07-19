@@ -364,6 +364,10 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	{
 		_ui->comboBox_cameraRGBD->setItemData(kSrcOpenNI2 - kSrcRGBD, 0, Qt::UserRole - 1);
 	}
+	if(!CameraOrbbec::available())
+	{
+		_ui->comboBox_cameraRGBD->setItemData(kSrcOrbbec - kSrcRGBD, 0, Qt::UserRole - 1);
+	}
 	if(!CameraFreenect2::available())
 	{
 		_ui->comboBox_cameraRGBD->setItemData(kSrcFreenect2 - kSrcRGBD, 0, Qt::UserRole - 1);
@@ -2114,6 +2118,10 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		{
 			_ui->comboBox_cameraRGBD->setCurrentIndex(kSrcOpenNI2-kSrcRGBD); // openni2
 		}
+		else if(CameraOrbbec::available())
+		{
+			_ui->comboBox_cameraRGBD->setCurrentIndex(kSrcOrbbec-kSrcRGBD); // openni2
+		}
 		else
 		{
 			_ui->comboBox_cameraRGBD->setCurrentIndex(kSrcOpenNI_PCL-kSrcRGBD); // openni-pcl
@@ -2714,7 +2722,7 @@ void PreferencesDialog::readCameraSettings(const QString & filePath)
 	_ui->spinBox_stereoZed_texturenessConfidenceThr->setValue(settings.value("textureness_confidence_thr", _ui->spinBox_stereoZed_texturenessConfidenceThr->value()).toInt());
 	_ui->lineEdit_zedSvoPath->setText(settings.value("svo_path", _ui->lineEdit_zedSvoPath->text()).toString());
 	settings.endGroup(); // StereoZed
-	
+
 	settings.beginGroup("MyntEye");
 	_ui->checkbox_stereoMyntEye_rectify->setChecked(settings.value("rectify", _ui->checkbox_stereoMyntEye_rectify->isChecked()).toBool());
 	_ui->checkbox_stereoMyntEye_depth->setChecked(settings.value("depth", _ui->checkbox_stereoMyntEye_depth->isChecked()).toBool());
@@ -4208,6 +4216,10 @@ void PreferencesDialog::selectSourceDriver(Src src, int variant)
 		{
 			_ui->lineEdit_openni2OniPath->clear();
 		}
+		else if(src == kSrcOrbbec)
+		{
+			_ui->lineEdit_openni2OniPath->clear();
+		}
 		else if (src == kSrcK4A)
 		{
 			_ui->lineEdit_k4a_mkv->clear();
@@ -4315,10 +4327,10 @@ void PreferencesDialog::selectSourceDatabase()
 	{
 		int r = QMessageBox::question(this, tr("Odometry in database..."), tr("Use odometry saved in database (if some saved)?"), QMessageBox::Yes | QMessageBox::No, QMessageBox::Yes);
 		_ui->source_checkBox_ignoreOdometry->setChecked(r != QMessageBox::Yes);
-		
+
 		if (_ui->general_doubleSpinBox_detectionRate->value() != 0 && _ui->general_spinBox_imagesBufferSize->value() != 0)
 		{
-			r = QMessageBox::question(this, tr("Detection rate..."), 
+			r = QMessageBox::question(this, tr("Detection rate..."),
 				tr("Do you want to process all frames? \n\nClicking \"Yes\" will set "
 					"RTAB-Map's detection rate (%1 Hz) and buffer size (%2) to 0 to make "
 					"sure that all frames are processed.")
@@ -5627,6 +5639,7 @@ void PreferencesDialog::updateSourceGrpVisibility()
 
 	_ui->stackedWidget_rgbd->setVisible(_ui->comboBox_sourceType->currentIndex() == 0 &&
 			(_ui->comboBox_cameraRGBD->currentIndex() == kSrcOpenNI2-kSrcRGBD ||
+			 _ui->comboBox_cameraRGBD->currentIndex() == kSrcOrbbec-kSrcRGBD ||
 			 _ui->comboBox_cameraRGBD->currentIndex() == kSrcFreenect2-kSrcRGBD ||
 			 _ui->comboBox_cameraRGBD->currentIndex() == kSrcK4W2 - kSrcRGBD ||
 			 _ui->comboBox_cameraRGBD->currentIndex() == kSrcK4A - kSrcRGBD ||
@@ -5635,7 +5648,10 @@ void PreferencesDialog::updateSourceGrpVisibility()
 			 _ui->comboBox_cameraRGBD->currentIndex() == kSrcOpenNI_PCL-kSrcRGBD ||
 			 _ui->comboBox_cameraRGBD->currentIndex() == kSrcRealSense2-kSrcRGBD ||
 			 _ui->comboBox_cameraRGBD->currentIndex() == kSrcSeerSense-kSrcRGBD));
-	_ui->groupBox_openni2->setVisible(_ui->comboBox_sourceType->currentIndex() == 0 && _ui->comboBox_cameraRGBD->currentIndex() == kSrcOpenNI2-kSrcRGBD);
+	_ui->groupBox_openni2->setVisible(_ui->comboBox_sourceType->currentIndex() == 0 && (_ui->comboBox_cameraRGBD->currentIndex() == kSrcOpenNI2-kSrcRGBD
+        || _ui->comboBox_cameraRGBD->currentIndex() == kSrcOrbbec-kSrcRGBD
+    )
+  );
 	_ui->groupBox_freenect2->setVisible(_ui->comboBox_sourceType->currentIndex() == 0 && _ui->comboBox_cameraRGBD->currentIndex() == kSrcFreenect2-kSrcRGBD);
 	_ui->groupBox_k4w2->setVisible(_ui->comboBox_sourceType->currentIndex() == 0 && _ui->comboBox_cameraRGBD->currentIndex() == kSrcK4W2 - kSrcRGBD);
 	_ui->groupBox_k4a->setVisible(_ui->comboBox_sourceType->currentIndex() == 0 && _ui->comboBox_cameraRGBD->currentIndex() == kSrcK4A - kSrcRGBD);
@@ -5644,8 +5660,8 @@ void PreferencesDialog::updateSourceGrpVisibility()
 	_ui->groupBox_cameraRGBDImages->setVisible(_ui->comboBox_sourceType->currentIndex() == 0 && _ui->comboBox_cameraRGBD->currentIndex() == kSrcRGBDImages-kSrcRGBD);
 	_ui->groupBox_openni->setVisible(_ui->comboBox_sourceType->currentIndex() == 0 && _ui->comboBox_cameraRGBD->currentIndex() == kSrcOpenNI_PCL - kSrcRGBD);
 
-	_ui->stackedWidget_stereo->setVisible(_ui->comboBox_sourceType->currentIndex() == 1 && 
-		(_ui->comboBox_cameraStereo->currentIndex() == kSrcStereoVideo-kSrcStereo || 
+	_ui->stackedWidget_stereo->setVisible(_ui->comboBox_sourceType->currentIndex() == 1 &&
+		(_ui->comboBox_cameraStereo->currentIndex() == kSrcStereoVideo-kSrcStereo ||
 		 _ui->comboBox_cameraStereo->currentIndex() == kSrcStereoImages-kSrcStereo ||
 		 _ui->comboBox_cameraStereo->currentIndex() == kSrcStereoZed - kSrcStereo ||
 		 _ui->comboBox_cameraStereo->currentIndex() == kSrcStereoUsb - kSrcStereo ||
@@ -6404,11 +6420,11 @@ double PreferencesDialog::getSourceScanForceGroundNormalsUp() const
 Camera * PreferencesDialog::createCamera(bool useRawImages, bool useColor)
 {
 	return createCamera(
-		this->getSourceDriver(), 
-		_ui->lineEdit_sourceDevice->text(), 
-		_ui->lineEdit_calibrationFile->text(), 
-		useRawImages, 
-		useColor, 
+		this->getSourceDriver(),
+		_ui->lineEdit_sourceDevice->text(),
+		_ui->lineEdit_calibrationFile->text(),
+		useRawImages,
+		useColor,
 		false,
 		false);
 }
@@ -6451,6 +6467,14 @@ Camera * PreferencesDialog::createCamera(
 	else if(driver == PreferencesDialog::kSrcOpenNI2)
 	{
 		camera = new CameraOpenNI2(
+				_ui->lineEdit_openni2OniPath->text().isEmpty()?device.toStdString():_ui->lineEdit_openni2OniPath->text().toStdString(),
+				useColor?CameraOpenNI2::kTypeColorDepth:CameraOpenNI2::kTypeIRDepth,
+				this->getGeneralInputRate(),
+				this->getSourceLocalTransform());
+	}
+	else if(driver == PreferencesDialog::kSrcOrbbec)
+	{
+		camera = new CameraOrbbec(
 				_ui->lineEdit_openni2OniPath->text().isEmpty()?device.toStdString():_ui->lineEdit_openni2OniPath->text().toStdString(),
 				useColor?CameraOpenNI2::kTypeColorDepth:CameraOpenNI2::kTypeIRDepth,
 				this->getGeneralInputRate(),
@@ -6521,7 +6545,7 @@ Camera * PreferencesDialog::createCamera(
 				this->getGeneralInputRate(),
 				this->getSourceLocalTransform());
 		}
-		
+
 		((CameraK4A*)camera)->setIRDepthFormat(_ui->checkbox_k4a_irDepth->isChecked());
 		((CameraK4A*)camera)->setPreferences(_ui->comboBox_k4a_rgb_resolution->currentIndex(),
 						     _ui->comboBox_k4a_framerate->currentIndex(),
@@ -6732,7 +6756,7 @@ Camera * PreferencesDialog::createCamera(
 					this->getSourceLocalTransform());
 		}
 	}
-    
+
     else if (driver == kSrcStereoTara)
     {
 
@@ -6935,7 +6959,7 @@ Camera * PreferencesDialog::createCamera(
 		else
 		{
 			//should be after initialization
-			if(driver == kSrcOpenNI2)
+			if(driver == kSrcOpenNI2 || driver == kSrcOrbbec)
 			{
 				((CameraOpenNI2*)camera)->setAutoWhiteBalance(_ui->openni2_autoWhiteBalance->isChecked());
 				((CameraOpenNI2*)camera)->setAutoExposure(_ui->openni2_autoExposure->isChecked());
@@ -7393,7 +7417,7 @@ void PreferencesDialog::calibrate()
 	}
 
 	Src driver = this->getSourceDriver();
-	if(driver == PreferencesDialog::kSrcFreenect || driver == PreferencesDialog::kSrcOpenNI2)
+	if(driver == PreferencesDialog::kSrcFreenect || driver == PreferencesDialog::kSrcOpenNI2 || driver == PreferencesDialog::kSrcOrbbec)
 	{
 		// 3 steps calibration: RGB -> IR -> Extrinsic
 		QMessageBox::StandardButton button = QMessageBox::question(this, tr("Calibration"),
@@ -7867,4 +7891,3 @@ void PreferencesDialog::testLidar()
 }
 
 }
-

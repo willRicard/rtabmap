@@ -1,4 +1,5 @@
 /*
+Copyright (c) 2024, Guillaume Ricard - MISTLab - Polytechnique Montreal
 Copyright (c) 2010-2016, Mathieu Labbe - IntRoLab - Universite de Sherbrooke
 All rights reserved.
 
@@ -449,6 +450,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent, bool sh
 	connect(_ui->actionOpenNI2, SIGNAL(triggered()), this, SLOT(selectOpenni2()));
 	connect(_ui->actionOpenNI2_kinect, SIGNAL(triggered()), this, SLOT(selectOpenni2()));
 	connect(_ui->actionOpenNI2_orbbec, SIGNAL(triggered()), this, SLOT(selectOpenni2()));
+	connect(_ui->actionOrbbec_orbbec, SIGNAL(triggered()), this, SLOT(selectOrbbec()));
 	connect(_ui->actionOpenNI2_sense, SIGNAL(triggered()), this, SLOT(selectOpenni2()));
 	connect(_ui->actionFreenect2, SIGNAL(triggered()), this, SLOT(selectFreenect2()));
 	connect(_ui->actionKinect_for_Windows_SDK_v2, SIGNAL(triggered()), this, SLOT(selectK4W2()));
@@ -7154,6 +7156,11 @@ void MainWindow::selectOpenniCvAsus()
 void MainWindow::selectOpenni2()
 {
 	_preferencesDialog->selectSourceDriver(PreferencesDialog::kSrcOpenNI2);
+}
+
+void MainWindow::selectOrbbec()
+{
+	_preferencesDialog->selectSourceDriver(PreferencesDialog::kSrcOrbbec);
 }
 
 void MainWindow::selectFreenect2()

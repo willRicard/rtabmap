@@ -1,4 +1,5 @@
 /*
+Copyright (c) 2024, Guillaume Ricard - MISTLab - Polytechnique Montreal
 Copyright (c) 2010-2016, Mathieu Labbe - IntRoLab - Universite de Sherbrooke
 All rights reserved.
 
@@ -175,6 +176,7 @@ protected Q_SLOTS:
 	void selectOpenniCv();
 	void selectOpenniCvAsus();
 	void selectOpenni2();
+	void selectOrbbec();
 	void selectFreenect2();
 	void selectK4W2();
 	void selectK4A();

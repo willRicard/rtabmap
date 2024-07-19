@@ -3487,6 +3487,11 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                   </item>
                                   <item>
                                    <property name="text">
+                                    <string>Orbbec</string>
+                                   </property>
+                                  </item>
+                                  <item>
+                                   <property name="text">
                                     <string>Freenect2</string>
                                    </property>
                                   </item>

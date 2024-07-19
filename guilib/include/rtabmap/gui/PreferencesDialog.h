@@ -1,4 +1,5 @@
 /*
+Copyright (c) 2024, Guillaume Ricard - MISTLab - Polytechnique Montreal
 Copyright (c) 2010-2016, Mathieu Labbe - IntRoLab - Universite de Sherbrooke
 All rights reserved.
 
@@ -98,6 +99,7 @@ public:
 		kSrcRealSense2     = 9,
 		kSrcK4A            = 10,
 		kSrcSeerSense      = 11,
+		kSrcOrbbec         = 12,
 
 		kSrcStereo         = 100,
 		kSrcDC1394         = 100,

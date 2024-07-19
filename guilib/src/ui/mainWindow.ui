@@ -228,6 +228,7 @@
          <normaloff>:/images/astra.png</normaloff>:/images/astra.png</iconset>
        </property>
        <addaction name="actionOpenNI2_orbbec"/>
+       <addaction name="actionOrbbec_orbbec"/>
       </widget>
       <widget class="QMenu" name="menuXvisio_SeerSense">
        <property name="title">
@@ -1710,6 +1711,14 @@
    </property>
    <property name="text">
     <string>OpenNI2</string>
+   </property>
+  </action>
+  <action name="actionOrbbec_orbbec">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Orbbec</string>
    </property>
   </action>
   <action name="actionRemove_label">

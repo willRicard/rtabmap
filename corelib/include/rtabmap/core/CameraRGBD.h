@@ -33,6 +33,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/camera/CameraOpenni.h>
 #include <rtabmap/core/camera/CameraOpenNI2.h>
 #include <rtabmap/core/camera/CameraOpenNICV.h>
+#include <rtabmap/core/camera/CameraOrbbec.h>
 #include <rtabmap/core/camera/CameraRealSense.h>
 #include <rtabmap/core/camera/CameraRealSense2.h>
 #include <rtabmap/core/camera/CameraRGBDImages.h>
